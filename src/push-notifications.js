@@ -62,6 +62,7 @@ const defaultSettings = {
     // contentEncoding: '< Encoding type, e.g.: aesgcm or aes128gcm >'
   },
   isAlwaysUseFCM: false,
+  keepAPNAlive: true, // configure wither to terminate apn socket after sending or keep it alive of re-use, pass false when used with aws lambda to make sure to empty the event loop after sending
 };
 
 class PN {
@@ -128,6 +129,18 @@ class PN {
       if (regIdsAPN.length > 0) {
         promises.push(
           this.sendWith(this.apn.sendAPN.bind(this.apn), regIdsAPN, data)
+            .then(result => {
+              if (!this.settings.keepAPNAlive) {
+                this.apn.shutdown();
+              }
+              return result;
+            })
+            .catch(err => {
+              if (!this.settings.keepAPNAlive) {
+                this.apn.shutdown();
+              }
+              throw err;
+            })
         );
       }
 
